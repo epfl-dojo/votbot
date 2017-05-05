@@ -16,6 +16,7 @@ import (
 var (
 	CARDS_JSON_URL   = "https://api.trello.com/1/lists/58c1b0c5a2c599346fd571ac?fields=name&cards=open&card_fields=name,url"
 	RESULT_SEPARATOR = " - "
+  SINGLE_VOTE = true
 )
 
 type TrelloCard struct {
@@ -33,10 +34,10 @@ type TrelloCardsList struct {
 type Election struct {
 	Name  string     `yaml:name`
 	Votes []Proposal `yaml:proposal`
+  Voters      map[string]int `yaml:voters`
 }
 
 type Proposal struct {
-	Voters      []string `yaml:voters`
 	Vote        int      `yaml:vote`
 	Description string   `yaml:description`
 }
@@ -46,8 +47,6 @@ func createYAMLFormData(cardList *TrelloCardsList) string {
 	for _, card := range cardList.Cards {
 		proposal := Proposal{
 			Description: card.Name,
-			Vote:        0,
-			Voters:      []string{},
 		}
 		election.Votes = append(election.Votes, proposal)
 	}
@@ -59,24 +58,14 @@ func createYAMLFormData(cardList *TrelloCardsList) string {
 	return string(d)
 }
 
-func createVoteForm(cardList *TrelloCardsList) string {
-	formString := ""
-	for _, card := range cardList.Cards {
-		formString += "0" + RESULT_SEPARATOR + card.Name + "\n"
-	}
-	return formString
-}
-
 func createVoteResponse(update tgbotapi.Update) tgbotapi.MessageConfig {
 	trelloCardsList := getTrelloCards(CARDS_JSON_URL)
 
-	yaml := createYAMLFormData(trelloCardsList)
-	fmt.Sprintf("%v", yaml)
+	votingText := createYAMLFormData(trelloCardsList)
 
-	text := createVoteForm(trelloCardsList)
 	buttonMarkup := createButtonForm(trelloCardsList)
 
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, votingText)
 	msg.ReplyMarkup = buttonMarkup
 
 	msg.ReplyToMessageID = update.Message.MessageID
@@ -92,27 +81,33 @@ func createUpdateResponse(update tgbotapi.Update) tgbotapi.EditMessageTextConfig
 		fmt.Println(err)
 		os.Exit(127)
 	}
-	fmt.Println("vote choice is %v\n", voteID)
-	votes := strings.Split(update.CallbackQuery.Message.Text, "\n")
-	fmt.Println("splited votes len %v\n", len(votes))
-
-	splitVote := strings.SplitN(votes[voteID], RESULT_SEPARATOR, 2)
-	rawVoteCount := splitVote[0]
-	voteCount, err := strconv.Atoi(rawVoteCount)
+	votingForm := Election{}
+	err = yaml.Unmarshal([]byte(update.CallbackQuery.Message.Text), &votingForm)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(127)
 	}
-	votes[voteID] = fmt.Sprintf("%v"+RESULT_SEPARATOR+"%v", voteCount+1, strings.TrimSpace(splitVote[1]))
-	newPropositions := strings.Join(votes, "\n")
 
+	votingForm.Votes[voteID].Vote += 1
+  if SINGLE_VOTE {
+    previousVoteChoice, ok := votingForm.Voters[update.CallbackQuery.From.UserName]
+    if ok {
+      votingForm.Votes[previousVoteChoice].Vote -= 1
+    }
+  }
+  votingForm.Voters[update.CallbackQuery.From.UserName] = voteID
 	proposals := []string{}
-	for _, proposal := range votes {
-		splitVote := strings.SplitN(proposal, RESULT_SEPARATOR, 2)
-		proposals = append(proposals, splitVote[1])
+	for _, proposal := range votingForm.Votes {
+		proposals = append(proposals, proposal.Description)
 	}
-
-	editMessageTextConfig := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID, newPropositions)
+	newPropositions, err := yaml.Marshal(&votingForm)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(127)
+	}
+	editMessageTextConfig := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
+		update.CallbackQuery.Message.MessageID,
+		string(newPropositions))
 	markup := createButtons(proposals)
 	editMessageTextConfig.ReplyMarkup = &markup
 	return editMessageTextConfig
