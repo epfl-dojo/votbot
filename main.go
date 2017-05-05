@@ -16,7 +16,7 @@ import (
 var (
 	CARDS_JSON_URL   = "https://api.trello.com/1/lists/58c1b0c5a2c599346fd571ac?fields=name&cards=open&card_fields=name,url"
 	RESULT_SEPARATOR = " - "
-  SINGLE_VOTE = true
+	SINGLE_VOTE      = true
 )
 
 type TrelloCard struct {
@@ -32,14 +32,14 @@ type TrelloCardsList struct {
 }
 
 type Election struct {
-	Name  string     `yaml:name`
-	Votes []Proposal `yaml:proposal`
-  Voters      map[string]int `yaml:voters`
+	Name   string         `yaml:name`
+	Votes  []Proposal     `yaml:proposal`
+	Voters map[string]int `yaml:voters`
 }
 
 type Proposal struct {
-	Vote        int      `yaml:vote`
-	Description string   `yaml:description`
+	Vote        int    `yaml:vote`
+	Description string `yaml:description`
 }
 
 func createYAMLFormData(cardList *TrelloCardsList) string {
@@ -89,13 +89,13 @@ func createUpdateResponse(update tgbotapi.Update) tgbotapi.EditMessageTextConfig
 	}
 
 	votingForm.Votes[voteID].Vote += 1
-  if SINGLE_VOTE {
-    previousVoteChoice, ok := votingForm.Voters[update.CallbackQuery.From.UserName]
-    if ok {
-      votingForm.Votes[previousVoteChoice].Vote -= 1
-    }
-  }
-  votingForm.Voters[update.CallbackQuery.From.UserName] = voteID
+	if SINGLE_VOTE {
+		previousVoteChoice, ok := votingForm.Voters[update.CallbackQuery.From.UserName]
+		if ok {
+			votingForm.Votes[previousVoteChoice].Vote -= 1
+		}
+	}
+	votingForm.Voters[update.CallbackQuery.From.UserName] = voteID
 	proposals := []string{}
 	for _, proposal := range votingForm.Votes {
 		proposals = append(proposals, proposal.Description)
