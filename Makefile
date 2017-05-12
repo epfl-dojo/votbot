@@ -1,4 +1,4 @@
-build:
+build: get_dep
 	go build 
 
 get_dep:
