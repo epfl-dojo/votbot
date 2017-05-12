@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -58,19 +59,39 @@ func createYAMLFormData(cardList *TrelloCardsList) string {
 	return string(d)
 }
 
-func createVoteResponse(update tgbotapi.Update) tgbotapi.MessageConfig {
-	trelloCardsList := getTrelloCards(CARDS_JSON_URL)
+func chat(update tgbotapi.Update) tgbotapi.MessageConfig {
 
-	votingText := createYAMLFormData(trelloCardsList)
+	msgTxt := update.Message.Text
+	msgParts := strings.Split(msgTxt, " ")
+	fmt.Println(len(msgParts), msgParts)
+	if len(msgParts) == 2 && msgParts[0] == "/newvote" {
 
-	buttonMarkup := createButtonForm(trelloCardsList)
+		fmt.Printf("newvote param", msgParts[1])
+		voteUrl, err := url.Parse(msgParts[1])
+		if err != nil {
+			return tgbotapi.NewMessage(update.Message.Chat.ID, "Ca va couper")
+		}
+		if voteUrl.Scheme == "" {
+			voteUrl.Scheme = "http"
+		}
+		if voteUrl.Host == "" {
+			return tgbotapi.NewMessage(update.Message.Chat.ID, "Donne une URL stp")
+		}
+		trelloCardsList := getTrelloCards(voteUrl.String())
 
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, votingText)
-	msg.ReplyMarkup = buttonMarkup
+		votingText := createYAMLFormData(trelloCardsList)
 
-	msg.ReplyToMessageID = update.Message.MessageID
-	fmt.Printf("sending the form")
-	return msg
+		buttonMarkup := createButtonForm(trelloCardsList)
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, votingText)
+		msg.ReplyMarkup = buttonMarkup
+
+		msg.ReplyToMessageID = update.Message.MessageID
+		fmt.Printf("sending the form")
+		return msg
+	} else {
+		return tgbotapi.NewMessage(update.Message.Chat.ID, "Say WHAT?")
+	}
 }
 
 func createUpdateResponse(update tgbotapi.Update) tgbotapi.EditMessageTextConfig {
@@ -173,7 +194,7 @@ func main() {
 			msg := createUpdateResponse(update)
 			bot.Send(msg)
 		} else if update.Message != nil {
-			msg := createVoteResponse(update)
+			msg := chat(update)
 			bot.Send(msg)
 		}
 
