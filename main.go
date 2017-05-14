@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	CARDS_JSON_URL   = "https://api.trello.com/1/lists/58c1b0c5a2c599346fd571ac?fields=name&cards=open&card_fields=name,url"
+	CARDS_JSON_URL   = "https://api.trello.com/1/lists/5917debee7c25fa77b80cae1?fields=name&cards=open&card_fields=name,url"
 	RESULT_SEPARATOR = " - "
 	SINGLE_VOTE      = true
 )
@@ -69,13 +69,13 @@ func chat(update tgbotapi.Update) tgbotapi.MessageConfig {
 		fmt.Printf("newvote param", msgParts[1])
 		voteUrl, err := url.Parse(msgParts[1])
 		if err != nil {
-			return tgbotapi.NewMessage(update.Message.Chat.ID, "Ca va couper")
+			return tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid URL, please try again.")
 		}
 		if voteUrl.Scheme == "" {
-			voteUrl.Scheme = "http"
+			voteUrl.Scheme = "https"
 		}
 		if voteUrl.Host == "" {
-			return tgbotapi.NewMessage(update.Message.Chat.ID, "Donne une URL stp")
+			return tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid URL host, please try again.")
 		}
 		trelloCardsList := getTrelloCards(voteUrl.String())
 
@@ -90,7 +90,7 @@ func chat(update tgbotapi.Update) tgbotapi.MessageConfig {
 		fmt.Printf("sending the form")
 		return msg
 	} else {
-		return tgbotapi.NewMessage(update.Message.Chat.ID, "Say WHAT?")
+		return tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid command, please try again.")
 	}
 }
 
