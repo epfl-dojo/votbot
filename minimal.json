@@ -1,0 +1,14 @@
+{
+    "name": "Name of the vote",
+    "cards": [
+        {
+            "name": "First vote option"
+        },
+        {
+            "name": "Second vote option"
+        },
+        {
+            "name": "Third vote option"
+        }
+    ]
+}

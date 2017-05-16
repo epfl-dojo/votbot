@@ -20,6 +20,30 @@ VotBot is a Telegram bot to organize votes. It is special in two points:
     1. `/close`
 
 
+## Minimal JSON
+If you do not want to use a trello cards lists json url, you can use any json
+file with, at least, these attributes:
+
+```
+{
+    "name": "Name of the vote",
+    "cards": [
+        {
+            "name": "First vote option"
+        },
+        {
+            "name": "Second vote option"
+        },
+        {
+            "name": "Third vote option"
+        }
+    ]
+}
+```
+
+An example stands here: https://raw.githubusercontent.com/epfl-dojo/votbot/master/minimal.json
+
+
 ## Screenshot
 ![Screenshot](./screenshot.png)
 
