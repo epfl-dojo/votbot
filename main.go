@@ -45,6 +45,7 @@ type Proposal struct {
 
 func createYAMLFormData(cardList *TrelloCardsList) string {
 	election := new(Election)
+	election.Name = cardList.Name
 	for _, card := range cardList.Cards {
 		proposal := Proposal{
 			Description: card.Name,
@@ -55,7 +56,7 @@ func createYAMLFormData(cardList *TrelloCardsList) string {
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
-	fmt.Printf("--- t dump:\n%s\n\n", string(d))
+	fmt.Printf("\n--- (debug) yaml dump:\n%s", string(d))
 	return string(d)
 }
 
@@ -63,10 +64,9 @@ func chat(update tgbotapi.Update) tgbotapi.MessageConfig {
 
 	msgTxt := update.Message.Text
 	msgParts := strings.Split(msgTxt, " ")
-	fmt.Println(len(msgParts), msgParts)
+	fmt.Println("\n--- (debug) /newvote: ", msgParts)
 	if len(msgParts) == 2 && msgParts[0] == "/newvote" {
 
-		fmt.Printf("newvote param", msgParts[1])
 		voteUrl, err := url.Parse(msgParts[1])
 		if err != nil {
 			return tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid URL, please try again.")
@@ -87,7 +87,7 @@ func chat(update tgbotapi.Update) tgbotapi.MessageConfig {
 		msg.ReplyMarkup = buttonMarkup
 
 		msg.ReplyToMessageID = update.Message.MessageID
-		fmt.Printf("sending the form")
+		fmt.Printf("\n--- (debug) sending the form\n ")
 		return msg
 	} else {
 		return tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid command, please try again.")
@@ -97,7 +97,7 @@ func chat(update tgbotapi.Update) tgbotapi.MessageConfig {
 func createUpdateResponse(update tgbotapi.Update) tgbotapi.EditMessageTextConfig {
 	choice := strings.TrimLeft(update.CallbackQuery.Data, "/")
 	voteID, err := strconv.Atoi(choice)
-	fmt.Printf(choice)
+	fmt.Printf("\n--- (debug)  ...newvote cast for %s: %s", update.CallbackQuery.From.UserName, choice)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(127)
@@ -190,7 +190,7 @@ func main() {
 
 	for update := range updates {
 		if update.CallbackQuery != nil && update.CallbackQuery.Message != nil {
-			fmt.Printf("casting new vote\n")
+			fmt.Printf("\n--- (debug) casting new vote: ")
 			msg := createUpdateResponse(update)
 			bot.Send(msg)
 		} else if update.Message != nil {
