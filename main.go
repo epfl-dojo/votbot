@@ -34,6 +34,7 @@ type TrelloCardsList struct {
 
 type Election struct {
 	Name   string         `yaml:name`
+	ID     string         `yaml:id`
 	Votes  []Proposal     `yaml:proposal`
 	Voters map[string]int `yaml:voters`
 }
@@ -65,6 +66,14 @@ func chat(update tgbotapi.Update) tgbotapi.MessageConfig {
 	msgTxt := update.Message.Text
 	msgParts := strings.Split(msgTxt, " ")
 	fmt.Println("\n--- (debug) /newvote: ", msgParts)
+	fmt.Println(len(msgParts), msgParts)
+	if msgTxt == "/close" {
+		if update.Message.ReplyToMessage == nil {
+			return tgbotapi.NewMessage(update.Message.Chat.ID, "Tu dois repondre au poll que tu souhaites fermer")
+		} else {
+			fmt.Println(update.Message.ReplyToMessage.MessageID)
+		}
+	}
 	if len(msgParts) == 2 && msgParts[0] == "/newvote" {
 
 		voteUrl, err := url.Parse(msgParts[1])
