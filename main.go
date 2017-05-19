@@ -12,12 +12,15 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"hash/fnv"
 )
 
 var (
 	CARDS_JSON_URL   = "https://api.trello.com/1/lists/5917debee7c25fa77b80cae1?fields=name&cards=open&card_fields=name,url"
 	RESULT_SEPARATOR = " - "
 	SINGLE_VOTE      = true
+	SECRET_VOTE      = true
+
 )
 
 type TrelloCard struct {
@@ -36,6 +39,7 @@ type Election struct {
 	Name   string         `yaml:name`
 	ID     string         `yaml:id`
 	Votes  []Proposal     `yaml:proposal`
+	// The string is a secret function of the username, so as to protect voter identity
 	Voters map[string]int `yaml:voters`
 }
 
@@ -67,6 +71,9 @@ func chat(update tgbotapi.Update) tgbotapi.MessageConfig {
 	msgParts := strings.Split(msgTxt, " ")
 	fmt.Println("\n--- (debug) /newvote: ", msgParts)
 	fmt.Println(len(msgParts), msgParts)
+	if msgTxt == "/start" {
+		return tgbotapi.NewMessage(update.Message.Chat.ID, "Here comes the help	(:")
+	}
 	if msgTxt == "/close" {
 		if update.Message.ReplyToMessage == nil {
 			return tgbotapi.NewMessage(update.Message.Chat.ID, "Tu dois repondre au poll que tu souhaites fermer")
@@ -103,6 +110,18 @@ func chat(update tgbotapi.Update) tgbotapi.MessageConfig {
 	}
 }
 
+func voterID(voter *tgbotapi.User, ballot *tgbotapi.Message) string {
+	if (SECRET_VOTE) {
+		h := fnv.New32a()
+		h.Write([]byte("sel ... "))
+//		h.Write([]byte(fmt.Sprintf("%d", ballot.Chat.ID)))
+		h.Write([]byte(voter.UserName))
+		return fmt.Sprintf("%d", h.Sum32())
+	} else {
+		return voter.UserName
+	}
+}
+
 func createUpdateResponse(update tgbotapi.Update) tgbotapi.EditMessageTextConfig {
 	choice := strings.TrimLeft(update.CallbackQuery.Data, "/")
 	voteID, err := strconv.Atoi(choice)
@@ -120,12 +139,12 @@ func createUpdateResponse(update tgbotapi.Update) tgbotapi.EditMessageTextConfig
 
 	votingForm.Votes[voteID].Vote += 1
 	if SINGLE_VOTE {
-		previousVoteChoice, ok := votingForm.Voters[update.CallbackQuery.From.UserName]
+		previousVoteChoice, ok := votingForm.Voters[voterID(update.CallbackQuery.From, update.Message)]
 		if ok {
 			votingForm.Votes[previousVoteChoice].Vote -= 1
 		}
 	}
-	votingForm.Voters[update.CallbackQuery.From.UserName] = voteID
+	votingForm.Voters[voterID(update.CallbackQuery.From, update.Message)] = voteID
 	proposals := []string{}
 	for _, proposal := range votingForm.Votes {
 		proposals = append(proposals, proposal.Description)
