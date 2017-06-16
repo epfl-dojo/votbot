@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"gopkg.in/yaml.v2"
+	"hash/fnv"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -12,7 +14,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"hash/fnv"
 )
 
 var (
@@ -20,7 +21,6 @@ var (
 	RESULT_SEPARATOR = " - "
 	SINGLE_VOTE      = true
 	SECRET_VOTE      = true
-
 )
 
 type TrelloCard struct {
@@ -36,9 +36,10 @@ type TrelloCardsList struct {
 }
 
 type Election struct {
-	Name   string         `yaml:name`
-	ID     string         `yaml:id`
-	Votes  []Proposal     `yaml:proposal`
+	Name       string     `yaml:name`
+	ID         string     `yaml:id`
+	PollsterID int        `yaml:pollster`
+	Votes      []Proposal `yaml:proposal`
 	// The string is a secret function of the username, so as to protect voter identity
 	Voters map[string]int `yaml:voters`
 }
@@ -48,9 +49,19 @@ type Proposal struct {
 	Description string `yaml:description`
 }
 
-func createYAMLFormData(cardList *TrelloCardsList) string {
+func ElectionFromMessage(pollMessage tgbotapi.Message) Election {
+	election := Election{}
+	err := yaml.Unmarshal([]byte(pollMessage.Text), &election)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return election
+}
+
+func createYAMLFormData(cardList *TrelloCardsList, pollsterID int) string {
 	election := new(Election)
 	election.Name = cardList.Name
+	election.PollsterID = pollsterID
 	for _, card := range cardList.Cards {
 		proposal := Proposal{
 			Description: card.Name,
@@ -64,34 +75,38 @@ func createYAMLFormData(cardList *TrelloCardsList) string {
 	fmt.Printf("\n--- (debug) yaml dump:\n%s", string(d))
 	return string(d)
 }
+
 func closePoll(message *tgbotapi.Message) tgbotapi.EditMessageTextConfig {
 	fmt.Println("messageID is %d", message.MessageID)
 	editMessageTextConfig := tgbotapi.NewEditMessageText(message.Chat.ID,
 		message.MessageID,
-		"C'EST FERMé")
+		message.Text)
+	editMessageTextConfig.ReplyMarkup = nil
 	return editMessageTextConfig
-	//return tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Closing poll %d.", update.Message.ReplyToMessage.MessageID))
 }
+
 func doChat(bot tgbotapi.BotAPI, update tgbotapi.Update) {
 
 	msgTxt := update.Message.Text
 	msgParts := strings.Split(msgTxt, " ")
-	fmt.Printf("\n--- (debug) «%s» command/mesage sent by someone", msgParts)
+	fmt.Printf("\n--- (debug) «%s» command/message sent by %s", msgParts, update.Message.From)
 
 	if msgTxt == "/start" {
 		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Here comes the start	(:"))
-	}  else if msgTxt == "/help" {
-    bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Here comes the help	(:"))
-  }	else if msgTxt == "/close" {
+	} else if msgTxt == "/help" {
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Here comes the help	(:"))
+	} else if msgTxt == "/close" {
 		if update.Message.ReplyToMessage == nil {
 			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please use this command while responding to the poll you want to close."))
 		} else {
 			// TODO:
 			// - check identity of who is closing the poll - should be the same one who opened it
-			fmt.Printf("\n--- (debug)  ...closing poll ID ? %d", update.Message.ReplyToMessage.MessageID)
+			fmt.Printf("\n--- (debug) ...closing poll ID ? %d", update.Message.ReplyToMessage.MessageID)
 			msg := closePoll(update.Message.ReplyToMessage)
-			fmt.Println(msg)
-			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "C'est fermé"))
+			bot.Send(msg)
+			summaryMsg := createPollSummary(*update.Message.ReplyToMessage)
+			bot.Send(summaryMsg)
+
 		}
 	} else if len(msgParts) == 2 && msgParts[0] == "/newvote" {
 		voteUrl, err := url.Parse(msgParts[1])
@@ -106,7 +121,7 @@ func doChat(bot tgbotapi.BotAPI, update tgbotapi.Update) {
 		}
 		trelloCardsList := getTrelloCards(voteUrl.String())
 
-		votingText := createYAMLFormData(trelloCardsList)
+		votingText := createYAMLFormData(trelloCardsList, update.Message.From.ID)
 
 		buttonMarkup := createButtonForm(trelloCardsList)
 
@@ -123,10 +138,10 @@ func doChat(bot tgbotapi.BotAPI, update tgbotapi.Update) {
 }
 
 func voterID(voter *tgbotapi.User, ballot *tgbotapi.Message) string {
-	if (SECRET_VOTE) {
+	if SECRET_VOTE {
 		h := fnv.New32a()
 		h.Write([]byte("sel ... "))
-//		h.Write([]byte(fmt.Sprintf("%d", ballot.Chat.ID)))
+		//		h.Write([]byte(fmt.Sprintf("%d", ballot.Chat.ID)))
 		h.Write([]byte(voter.UserName))
 		return fmt.Sprintf("%d", h.Sum32())
 	} else {
@@ -134,34 +149,44 @@ func voterID(voter *tgbotapi.User, ballot *tgbotapi.Message) string {
 	}
 }
 
+func createPollSummary(message tgbotapi.Message) tgbotapi.MessageConfig {
+	election := ElectionFromMessage(message)
+	var bufferSummary bytes.Buffer
+	bufferSummary.WriteString(fmt.Sprintf("— Closing poll \"%s\" —\n", election.Name))
+	// TODO: get user's username... bufferSummary.WriteString(fmt.Sprintf("...opened by %s\n\n", message.From.UserName))
+	for _, vote := range election.Votes {
+		voteNoun := ""
+		if (vote.Vote <= 1) {voteNoun = "vote" } else {voteNoun = "votes" }
+		bufferSummary.WriteString(fmt.Sprintf("  ◦ %3d %s for %s\n", vote.Vote, voteNoun, vote.Description))
+	}
+	return tgbotapi.NewMessage(message.Chat.ID, bufferSummary.String())
+}
+
 func createUpdateResponse(update tgbotapi.Update) tgbotapi.EditMessageTextConfig {
 	choice := strings.TrimLeft(update.CallbackQuery.Data, "/")
 	voteID, err := strconv.Atoi(choice)
-	fmt.Printf("\n--- (debug)  ...newvote cast for %s: %s", update.CallbackQuery.From.UserName, choice)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(127)
-	}
-	votingForm := Election{}
-	err = yaml.Unmarshal([]byte(update.CallbackQuery.Message.Text), &votingForm)
+	fmt.Printf("\n--- (debug) ...for choice %d by %s (messageID %d)", voteID, update.CallbackQuery.From.UserName, update.CallbackQuery.Message.MessageID)
+
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(127)
 	}
 
-	votingForm.Votes[voteID].Vote += 1
+	election := ElectionFromMessage(*update.CallbackQuery.Message)
+
+	election.Votes[voteID].Vote += 1
 	if SINGLE_VOTE {
-		previousVoteChoice, ok := votingForm.Voters[voterID(update.CallbackQuery.From, update.Message)]
+		previousVoteChoice, ok := election.Voters[voterID(update.CallbackQuery.From, update.Message)]
 		if ok {
-			votingForm.Votes[previousVoteChoice].Vote -= 1
+			election.Votes[previousVoteChoice].Vote -= 1
 		}
 	}
-	votingForm.Voters[voterID(update.CallbackQuery.From, update.Message)] = voteID
+	election.Voters[voterID(update.CallbackQuery.From, update.Message)] = voteID
 	proposals := []string{}
-	for _, proposal := range votingForm.Votes {
+	for _, proposal := range election.Votes {
 		proposals = append(proposals, proposal.Description)
 	}
-	newPropositions, err := yaml.Marshal(&votingForm)
+	newPropositions, err := yaml.Marshal(&election)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(127)
