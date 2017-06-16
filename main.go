@@ -158,7 +158,7 @@ func createPollSummary(message tgbotapi.Message) tgbotapi.MessageConfig {
 	for _, vote := range election.Votes {
 		var voteNoun string
 		if (vote.Vote <= 1) {voteNoun = "vote" } else {voteNoun = "votes" }
-		bufferSummary.WriteString(fmt.Sprintf("  ◦ %2d %s for %s\n", vote.Vote, voteNoun, vote.Description))
+		bufferSummary.WriteString(fmt.Sprintf("  ◦ %2d %s for «%s»\n", vote.Vote, voteNoun, vote.Description))
 	}
 	// TODO: Option XXX wins (and handle ex-aequo results)
 	// -> bufferSummary.WriteString(fmt.Sprintf("— Option \"%s\" wins —\n", election.Name))
