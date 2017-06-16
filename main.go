@@ -64,34 +64,46 @@ func createYAMLFormData(cardList *TrelloCardsList) string {
 	fmt.Printf("\n--- (debug) yaml dump:\n%s", string(d))
 	return string(d)
 }
-
-func chat(update tgbotapi.Update) tgbotapi.MessageConfig {
+func closePoll(message *tgbotapi.Message) tgbotapi.EditMessageTextConfig {
+	fmt.Println("messageID is %d", message.MessageID)
+	editMessageTextConfig := tgbotapi.NewEditMessageText(message.Chat.ID,
+		message.MessageID,
+		"C'EST FERMé")
+	return editMessageTextConfig
+	//return tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Closing poll %d.", update.Message.ReplyToMessage.MessageID))
+}
+func doChat(bot tgbotapi.BotAPI, update tgbotapi.Update) {
 
 	msgTxt := update.Message.Text
 	msgParts := strings.Split(msgTxt, " ")
 	fmt.Println("\n--- (debug) /newvote: ", msgParts)
 	fmt.Println(len(msgParts), msgParts)
-	if msgTxt == "/start" {
-		return tgbotapi.NewMessage(update.Message.Chat.ID, "Here comes the help	(:")
-	}
-	if msgTxt == "/close" {
-		if update.Message.ReplyToMessage == nil {
-			return tgbotapi.NewMessage(update.Message.Chat.ID, "Tu dois repondre au poll que tu souhaites fermer")
-		} else {
-			fmt.Println(update.Message.ReplyToMessage.MessageID)
-		}
-	}
-	if len(msgParts) == 2 && msgParts[0] == "/newvote" {
 
+	if msgTxt == "/start" {
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Here comes the start	(:"))
+	}  else if msgTxt == "/help" {
+    bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Here comes the help	(:"))
+  }	else if msgTxt == "/close" {
+		if update.Message.ReplyToMessage == nil {
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please use this command while responding to the poll you want to close."))
+		} else {
+			// TODO:
+			// - check identity of who is closing the poll - should be the same one who opened it
+			fmt.Printf("\n--- (debug)  ...closing poll ID ? %d", update.Message.ReplyToMessage.MessageID)
+			msg := closePoll(update.Message.ReplyToMessage)
+			fmt.Println(msg)
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "C'est fermé"))
+		}
+	} else if len(msgParts) == 2 && msgParts[0] == "/newvote" {
 		voteUrl, err := url.Parse(msgParts[1])
 		if err != nil {
-			return tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid URL, please try again.")
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid URL, please try again."))
 		}
 		if voteUrl.Scheme == "" {
 			voteUrl.Scheme = "https"
 		}
 		if voteUrl.Host == "" {
-			return tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid URL host, please try again.")
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid URL host, please try again."))
 		}
 		trelloCardsList := getTrelloCards(voteUrl.String())
 
@@ -103,10 +115,11 @@ func chat(update tgbotapi.Update) tgbotapi.MessageConfig {
 		msg.ReplyMarkup = buttonMarkup
 
 		msg.ReplyToMessageID = update.Message.MessageID
-		fmt.Printf("\n--- (debug) sending the form\n ")
-		return msg
+		fmt.Printf("\n--- (debug) sending the form for /newpoll of message ID: %d\n", update.Message.MessageID)
+		reply, _ := bot.Send(msg)
+		fmt.Printf("\n--- (debug) sent as ID: %d\n", reply.MessageID)
 	} else {
-		return tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid command, please try again.")
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid command, please try again."))
 	}
 }
 
@@ -222,8 +235,7 @@ func main() {
 			msg := createUpdateResponse(update)
 			bot.Send(msg)
 		} else if update.Message != nil {
-			msg := chat(update)
-			bot.Send(msg)
+			doChat(*bot, update)
 		}
 
 	}

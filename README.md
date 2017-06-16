@@ -13,7 +13,7 @@ VotBot is a Telegram bot to organize votes. It is special in two points:
 ## Usage
   * Talk to the bot ;
   * Create a new vote:  
-    `/newvote https://api.trello.com/1/lists/5917debee7c25fa77b80cae1?fields=name&cards=open&card_fields=name,url`
+    `/newvote https://raw.githubusercontent.com/epfl-dojo/votbot/master/minimal.json`
   * Do your vote ;
   * Close the vote:
     1. Reply the following to the vote message
