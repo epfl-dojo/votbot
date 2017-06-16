@@ -76,8 +76,7 @@ func doChat(bot tgbotapi.BotAPI, update tgbotapi.Update) {
 
 	msgTxt := update.Message.Text
 	msgParts := strings.Split(msgTxt, " ")
-	fmt.Println("\n--- (debug) /newvote: ", msgParts)
-	fmt.Println(len(msgParts), msgParts)
+	fmt.Printf("\n--- (debug) «%s» command/mesage sent by someone", msgParts)
 
 	if msgTxt == "/start" {
 		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Here comes the start	(:"))
