@@ -92,9 +92,9 @@ func doChat(bot tgbotapi.BotAPI, update tgbotapi.Update) {
 	fmt.Printf("\n--- (debug) «%s» command/message sent by %s", msgParts, update.Message.From)
 
 	if msgTxt == "/start" {
-		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Here comes the start	(:"))
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Welcome to @votbot!\n\nThis message may not be up to date, please visite https://github.com/epfl-dojo/votbot for latest documentation.\n\nThe commands you may want to use are:\n  ◦ /newvote URL\n     where the URL point to a JSON file well formatted\n  ◦ /close\n    Only when answering to a poll message to close it; Vote options will disappear and a summarized message will pop.\n\nFell free to contact and ask stuff on https://github.com/epfl-dojo/votbot\n\n                — Have fun"))
 	} else if msgTxt == "/help" {
-		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Here comes the help	(:"))
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please visite https://github.com/epfl-dojo/votbot for latest documentation. Feel free to ask there !\n\nYou can try\n ```\n/newvote https://raw.githubusercontent.com/epfl-dojo/votbot/master/minimal.json\n```\n as a demo...\n\n                — Have fun"))
 	} else if msgTxt == "/close" {
 		if update.Message.ReplyToMessage == nil {
 			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please use this command while responding to the poll you want to close."))
@@ -153,12 +153,15 @@ func createPollSummary(message tgbotapi.Message) tgbotapi.MessageConfig {
 	election := ElectionFromMessage(message)
 	var bufferSummary bytes.Buffer
 	bufferSummary.WriteString(fmt.Sprintf("— Closing poll \"%s\" —\n", election.Name))
-	// TODO: get user's username... bufferSummary.WriteString(fmt.Sprintf("...opened by %s\n\n", message.From.UserName))
+	// TODO: get user's username...
+	// -> bufferSummary.WriteString(fmt.Sprintf("...opened by %s\n\n", message.From.UserName))
 	for _, vote := range election.Votes {
-		voteNoun := ""
+		var voteNoun string
 		if (vote.Vote <= 1) {voteNoun = "vote" } else {voteNoun = "votes" }
-		bufferSummary.WriteString(fmt.Sprintf("  ◦ %3d %s for %s\n", vote.Vote, voteNoun, vote.Description))
+		bufferSummary.WriteString(fmt.Sprintf("  ◦ %2d %s for %s\n", vote.Vote, voteNoun, vote.Description))
 	}
+	// TODO: Option XXX wins (and handle ex-aequo results)
+	// -> bufferSummary.WriteString(fmt.Sprintf("— Option \"%s\" wins —\n", election.Name))
 	return tgbotapi.NewMessage(message.Chat.ID, bufferSummary.String())
 }
 
