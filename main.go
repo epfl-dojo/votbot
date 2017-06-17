@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -46,6 +47,16 @@ type Election struct {
 type Proposal struct {
 	Vote        int    `yaml:vote`
 	Description string `yaml:description`
+}
+
+func (election Election) Len() int {
+	return len(election.Votes)
+}
+func (election Election) Less(i, j int) bool {
+	return election.Votes[i].Vote < election.Votes[j].Vote
+}
+func (election Election) Swap(i, j int) {
+	election.Votes[i].Vote, election.Votes[j].Vote = election.Votes[j].Vote, election.Votes[i].Vote
 }
 
 func ElectionFromMessage(pollMessage tgbotapi.Message) Election {
@@ -168,6 +179,7 @@ func createPollSummary(message tgbotapi.Message, pollster tgbotapi.User) tgbotap
 	} else {
 		bufferSummary.WriteString(fmt.Sprintf("Poll started by %v\n", pollster.UserName))
 	}
+	sort.Sort(election)
 	for _, vote := range election.Votes {
 		var voteNoun string
 		if vote.Vote <= 1 {
