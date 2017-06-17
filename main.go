@@ -102,6 +102,13 @@ func doChat(bot tgbotapi.BotAPI, update tgbotapi.Update) {
 			// TODO:
 			// - check identity of who is closing the poll - should be the same one who opened it
 			fmt.Printf("\n--- (debug) ...closing poll ID ? %d", update.Message.ReplyToMessage.MessageID)
+			election := ElectionFromMessage(*update.Message.ReplyToMessage)
+			if election.PollsterID != update.Message.From.ID {
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You have no right to close that poll.")
+				msg.ReplyToMessageID = update.Message.MessageID
+				bot.Send(msg)
+				return
+			}
 			msg := closePoll(update.Message.ReplyToMessage)
 			bot.Send(msg)
 			summaryMsg := createPollSummary(*update.Message.ReplyToMessage)
@@ -157,7 +164,11 @@ func createPollSummary(message tgbotapi.Message) tgbotapi.MessageConfig {
 	// -> bufferSummary.WriteString(fmt.Sprintf("...opened by %s\n\n", message.From.UserName))
 	for _, vote := range election.Votes {
 		var voteNoun string
-		if (vote.Vote <= 1) {voteNoun = "vote" } else {voteNoun = "votes" }
+		if vote.Vote <= 1 {
+			voteNoun = "vote"
+		} else {
+			voteNoun = "votes"
+		}
 		bufferSummary.WriteString(fmt.Sprintf("  ◦ %2d %s for «%s»\n", vote.Vote, voteNoun, vote.Description))
 	}
 	// TODO: Option XXX wins (and handle ex-aequo results)
@@ -179,8 +190,8 @@ func createUpdateResponse(update tgbotapi.Update) tgbotapi.EditMessageTextConfig
 
 	election.Votes[voteID].Vote += 1
 	if SINGLE_VOTE {
-		previousVoteChoice, ok := election.Voters[voterID(update.CallbackQuery.From, update.Message)]
-		if ok {
+		previousVoteChoice, voteChoiceExists := election.Voters[voterID(update.CallbackQuery.From, update.Message)]
+		if voteChoiceExists {
 			election.Votes[previousVoteChoice].Vote -= 1
 		}
 	}
