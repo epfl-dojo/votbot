@@ -103,7 +103,7 @@ func doChat(bot tgbotapi.BotAPI, update tgbotapi.Update) {
 
 	if msgTxt == "/start" {
 		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Welcome to @votbot!\n\nThis message may not be up to date, please visite https://github.com/epfl-dojo/votbot for latest documentation.\n\nThe commands you may want to use are:\n  ◦ /help\n     where you can have some tips and working demo\n  ◦ /newvote URL\n     where the URL point to a JSON file well formatted\n  ◦ /close\n    Only when answering to a poll message to close it; Vote options will disappear and a summarized message will pop.\n\nFell free to contact and ask stuff on https://github.com/epfl-dojo/votbot\n\n                — Have fun"))
-	} else if (msgTxt == "/help" || msgTxt == "/help@dojovotbot") {
+	} else if msgTxt == "/help" || msgTxt == "/help@dojovotbot" {
 		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please visite https://github.com/epfl-dojo/votbot for latest documentation.\n\nThe commands you may want to use are:\n  ◦ /newvote URL\n     where the URL point to a JSON file well formatted\n  ◦ /close\n    Only when answering to a poll message to close it; Vote options will disappear and a summarized message will pop.\n\nYou can try\n ```\n/newvote https://raw.githubusercontent.com/epfl-dojo/votbot/master/minimal.json\n```\n as a demo...\n\n                — Have fun"))
 	} else if msgTxt == "/close" {
 		if update.Message.ReplyToMessage == nil {
@@ -179,15 +179,15 @@ func createPollSummary(message tgbotapi.Message, pollster tgbotapi.User) tgbotap
 	} else {
 		bufferSummary.WriteString(fmt.Sprintf("Poll started by %v\n", pollster.UserName))
 	}
-	sort.Sort(election)
-	for _, vote := range election.Votes {
+	sort.Sort(sort.Reverse(election))
+	for order, vote := range election.Votes {
 		var voteNoun string
 		if vote.Vote <= 1 {
 			voteNoun = "vote"
 		} else {
 			voteNoun = "votes"
 		}
-		bufferSummary.WriteString(fmt.Sprintf("  ◦ %2d %s for «%s»\n", vote.Vote, voteNoun, vote.Description))
+		bufferSummary.WriteString(fmt.Sprintf("  %d) %2d %s for «%s»\n", order, vote.Vote, voteNoun, vote.Description))
 	}
 	// TODO: Option XXX wins (and handle ex-aequo results)
 	// -> bufferSummary.WriteString(fmt.Sprintf("— Option \"%s\" wins —\n", election.Name))
