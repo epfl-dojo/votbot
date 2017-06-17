@@ -1,7 +1,7 @@
 # VotBot
 VotBot is a Telegram bot to organize votes. It is special in two points:
-  1. It can take a Trello Card List json url in parameter ;
-  1. It's stateless: all data are stored in the chat itself.
+  1. It can take a Trello Card List json URL in parameter ([see details](https://github.com/epfl-dojo/votbot/blob/master/README.md#how-to-use-the-bot-with-trello);
+  1. It's stateless: all data are stored in the chat itself ([see operation chart](https://github.com/epfl-dojo/votbot/#operation-chart.
 
 
 ## Run the bot
@@ -50,6 +50,7 @@ An example stands here: https://raw.githubusercontent.com/epfl-dojo/votbot/maste
 
 ## Operation Chart
 ![Operation Chart](./operation_votbot.png)
+
 
 ## How to use the bot with Trello
   1. Open your Trello board
