@@ -91,17 +91,16 @@ func doChat(bot tgbotapi.BotAPI, update tgbotapi.Update) {
 	fmt.Printf("\n--- (debug) «%s» command/message sent by %s", msgParts, update.Message.From)
 
 	if msgTxt == "/start" {
-		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Welcome to @votbot!\n\nThis message may not be up to date, please visite https://github.com/epfl-dojo/votbot for latest documentation.\n\nThe commands you may want to use are:\n  ◦ /newvote URL\n     where the URL point to a JSON file well formatted\n  ◦ /close\n    Only when answering to a poll message to close it; Vote options will disappear and a summarized message will pop.\n\nFell free to contact and ask stuff on https://github.com/epfl-dojo/votbot\n\n                — Have fun"))
-	} else if msgTxt == "/help" {
-		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please visite https://github.com/epfl-dojo/votbot for latest documentation. Feel free to ask there !\n\nYou can try\n ```\n/newvote https://raw.githubusercontent.com/epfl-dojo/votbot/master/minimal.json\n```\n as a demo...\n\n                — Have fun"))
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Welcome to @votbot!\n\nThis message may not be up to date, please visite https://github.com/epfl-dojo/votbot for latest documentation.\n\nThe commands you may want to use are:\n  ◦ /help\n     where you can have some tips and working demo\n  ◦ /newvote URL\n     where the URL point to a JSON file well formatted\n  ◦ /close\n    Only when answering to a poll message to close it; Vote options will disappear and a summarized message will pop.\n\nFell free to contact and ask stuff on https://github.com/epfl-dojo/votbot\n\n                — Have fun"))
+	} else if (msgTxt == "/help" || msgTxt == "/help@dojovotbot") {
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please visite https://github.com/epfl-dojo/votbot for latest documentation.\n\nThe commands you may want to use are:\n  ◦ /newvote URL\n     where the URL point to a JSON file well formatted\n  ◦ /close\n    Only when answering to a poll message to close it; Vote options will disappear and a summarized message will pop.\n\nYou can try\n ```\n/newvote https://raw.githubusercontent.com/epfl-dojo/votbot/master/minimal.json\n```\n as a demo...\n\n                — Have fun"))
 	} else if msgTxt == "/close" {
 		if update.Message.ReplyToMessage == nil {
 			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please use this command while responding to the poll you want to close."))
 		} else {
-			// TODO:
-			// - check identity of who is closing the poll - should be the same one who opened it
 			fmt.Printf("\n--- (debug) ...closing poll ID ? %d", update.Message.ReplyToMessage.MessageID)
 			election := ElectionFromMessage(*update.Message.ReplyToMessage)
+			// check identity of who is closing the poll - should be the same one who opened it
 			if election.PollsterID != update.Message.From.ID {
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You have no right to close that poll.")
 				msg.ReplyToMessageID = update.Message.MessageID
@@ -114,16 +113,18 @@ func doChat(bot tgbotapi.BotAPI, update tgbotapi.Update) {
 			bot.Send(summaryMsg)
 
 		}
+	} else if len(msgParts) < 2 && (msgParts[0] == "/newvote" || msgParts[0] == "/newvote@dojovotbot") {
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "/newvote command take an URL as argument, see /help"))
 	} else if len(msgParts) == 2 && msgParts[0] == "/newvote" {
 		voteUrl, err := url.Parse(msgParts[1])
 		if err != nil {
-			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid URL, please try again."))
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid URL, please see /help"))
 		}
 		if voteUrl.Scheme == "" {
 			voteUrl.Scheme = "https"
 		}
 		if voteUrl.Host == "" {
-			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid URL host, please try again."))
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid URL host, please see /help"))
 		}
 		trelloCardsList := getTrelloCards(voteUrl.String())
 
