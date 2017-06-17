@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
@@ -149,7 +150,9 @@ func voterID(voter *tgbotapi.User, ballot *tgbotapi.Message) string {
 		h := fnv.New32a()
 		h.Write([]byte("sel ... "))
 		//		h.Write([]byte(fmt.Sprintf("%d", ballot.Chat.ID)))
-		h.Write([]byte(voter.UserName))
+		voterIDBytes := make([]byte, 64)
+		binary.PutVarint(voterIDBytes, int64(voter.ID))
+		h.Write(voterIDBytes)
 		return fmt.Sprintf("%d", h.Sum32())
 	} else {
 		return voter.UserName
