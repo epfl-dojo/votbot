@@ -155,7 +155,7 @@ func voterID(voter *tgbotapi.User, ballot *tgbotapi.Message) string {
 		h.Write(voterIDBytes)
 		return fmt.Sprintf("%d", h.Sum32())
 	} else {
-		return voter.UserName
+		return fmt.Sprintf("%d", voter.ID)
 	}
 }
 
