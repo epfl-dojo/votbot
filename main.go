@@ -18,10 +18,8 @@ import (
 )
 
 var (
-	CARDS_JSON_URL   = "https://api.trello.com/1/lists/5917debee7c25fa77b80cae1?fields=name&cards=open&card_fields=name,url"
-	RESULT_SEPARATOR = " - "
-	SINGLE_VOTE      = true
-	SECRET_VOTE      = true
+	SINGLE_VOTE = true
+	SECRET_VOTE = true
 )
 
 type TrelloCard struct {
