@@ -109,7 +109,7 @@ func doChat(bot tgbotapi.BotAPI, update tgbotapi.Update) {
 			}
 			msg := closePoll(update.Message.ReplyToMessage)
 			bot.Send(msg)
-			summaryMsg := createPollSummary(*update.Message.ReplyToMessage)
+			summaryMsg := createPollSummary(*update.Message.ReplyToMessage, *update.Message.From)
 			bot.Send(summaryMsg)
 
 		}
@@ -158,12 +158,16 @@ func voterID(voter *tgbotapi.User, ballot *tgbotapi.Message) string {
 	}
 }
 
-func createPollSummary(message tgbotapi.Message) tgbotapi.MessageConfig {
+func createPollSummary(message tgbotapi.Message, pollster tgbotapi.User) tgbotapi.MessageConfig {
 	election := ElectionFromMessage(message)
 	var bufferSummary bytes.Buffer
 	bufferSummary.WriteString(fmt.Sprintf("— Closing poll \"%s\" —\n", election.Name))
-	// TODO: get user's username...
-	// -> bufferSummary.WriteString(fmt.Sprintf("...opened by %s\n\n", message.From.UserName))
+	fmt.Printf("%v\n", message.ReplyToMessage)
+	if pollster.FirstName == "" && pollster.LastName == "" {
+		bufferSummary.WriteString(fmt.Sprintf("Poll started by %v %v\n", pollster.FirstName, pollster.LastName))
+	} else {
+		bufferSummary.WriteString(fmt.Sprintf("Poll started by %v\n", pollster.UserName))
+	}
 	for _, vote := range election.Votes {
 		var voteNoun string
 		if vote.Vote <= 1 {
