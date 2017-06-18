@@ -52,9 +52,11 @@ type Proposal struct {
 func (election Election) Len() int {
 	return len(election.Votes)
 }
+
 func (election Election) Less(i, j int) bool {
 	return election.Votes[i].Vote < election.Votes[j].Vote
 }
+
 func (election Election) Swap(i, j int) {
 	election.Votes[i].Vote, election.Votes[j].Vote = election.Votes[j].Vote, election.Votes[i].Vote
 }
@@ -101,11 +103,11 @@ func doChat(bot tgbotapi.BotAPI, update tgbotapi.Update) {
 	msgParts := strings.Split(msgTxt, " ")
 	fmt.Printf("\n--- (debug) «%s» command/message sent by %s", msgParts, update.Message.From)
 
-	if msgTxt == "/start" {
-		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Welcome to @votbot!\n\nThis message may not be up to date, please visite https://github.com/epfl-dojo/votbot for latest documentation.\n\nThe commands you may want to use are:\n  ◦ /help\n     where you can have some tips and working demo\n  ◦ /newvote URL\n     where the URL point to a JSON file well formatted\n  ◦ /close\n    Only when answering to a poll message to close it; Vote options will disappear and a summarized message will pop.\n\nFell free to contact and ask stuff on https://github.com/epfl-dojo/votbot\n\n                — Have fun"))
-	} else if msgTxt == "/help" || msgTxt == "/help@dojovotbot" {
-		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please visite https://github.com/epfl-dojo/votbot for latest documentation.\n\nThe commands you may want to use are:\n  ◦ /newvote URL\n     where the URL point to a JSON file well formatted\n  ◦ /close\n    Only when answering to a poll message to close it; Vote options will disappear and a summarized message will pop.\n\nYou can try\n ```\n/newvote https://raw.githubusercontent.com/epfl-dojo/votbot/master/minimal.json\n```\n as a demo...\n\n                — Have fun"))
-	} else if msgTxt == "/close" {
+	if msgTxt == "/start" || msgTxt == "/start@"+bot.Self.UserName {
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Welcome to @votbot!\n\nThis message may not be up to date, please visit https://github.com/epfl-dojo/votbot for latest documentation.\n\nThe commands you may want to use are:\n  ◦ /help\n     where you can have some tips and working demo\n  ◦ /newvote URL\n     where the URL point to a JSON file well formatted\n  ◦ /close\n    Only when answering to a poll message to close it; Vote options will disappear and a summarized message will pop.\n\nFell free to contact and ask stuff on https://github.com/epfl-dojo/votbot\n\n                — Have fun"))
+	} else if msgTxt == "/help" || msgTxt == "/help@"+bot.Self.UserName {
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please visit https://github.com/epfl-dojo/votbot for latest documentation.\n\nThe commands you may want to use are:\n  ◦ /newvote URL\n     where the URL point to a JSON file well formatted\n  ◦ /close\n    Only when answering to a poll message to close it; Vote options will disappear and a summarized message will pop.\n\nYou can try\n ```\n/newvote https://raw.githubusercontent.com/epfl-dojo/votbot/master/minimal.json\n```\n as a demo...\n\n                — Have fun"))
+	} else if msgTxt == "/close" || msgTxt == "/close@"+bot.Self.UserName {
 		if update.Message.ReplyToMessage == nil {
 			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please use this command while responding to the poll you want to close."))
 		} else {
@@ -124,9 +126,9 @@ func doChat(bot tgbotapi.BotAPI, update tgbotapi.Update) {
 			bot.Send(summaryMsg)
 
 		}
-	} else if len(msgParts) < 2 && (msgParts[0] == "/newvote" || msgParts[0] == "/newvote@dojovotbot") {
+	} else if len(msgParts) < 2 && (msgParts[0] == "/newvote" || msgParts[0] == "/newvote"+bot.Self.UserName) {
 		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "/newvote command take an URL as argument, see /help"))
-	} else if len(msgParts) == 2 && msgParts[0] == "/newvote" {
+	} else if len(msgParts) == 2 && (msgParts[0] == "/newvote" || msgParts[0] == "/newvote"+bot.Self.UserName) {
 		voteUrl, err := url.Parse(msgParts[1])
 		if err != nil {
 			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid URL, please see /help"))
