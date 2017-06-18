@@ -104,9 +104,9 @@ func doChat(bot tgbotapi.BotAPI, update tgbotapi.Update) {
 	fmt.Printf("\n--- (debug) «%s» command/message sent by %s", msgParts, update.Message.From)
 
 	if msgTxt == "/start" || msgTxt == "/start@"+bot.Self.UserName {
-		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Welcome to @"+bot.Self.UserName+"!\n\nThis message may not be up to date, please visit https://github.com/epfl-dojo/votbot for latest documentation.\n\nThe commands you may want to use are:\n  ◦ /help\n     where you can have some tips and working demo\n  ◦ /newvote URL\n     where the URL point to a JSON file well formatted\n  ◦ /close\n    Only when answering to a poll message to close it; Vote options will disappear and a summarized message will pop.\n\nFell free to contact and ask stuff on https://github.com/epfl-dojo/votbot\n\n                — Have fun"))
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, getBotStartMsg(bot.Self.UserName)))
 	} else if msgTxt == "/help" || msgTxt == "/help@"+bot.Self.UserName {
-		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please visit https://github.com/epfl-dojo/votbot for latest documentation.\n\nThe commands you may want to use are:\n  ◦ /newvote URL\n     where the URL point to a JSON file well formatted\n  ◦ /close\n    Only when answering to a poll message to close it; Vote options will disappear and a summarized message will pop.\n\nYou can try\n ```\n/newvote https://raw.githubusercontent.com/epfl-dojo/votbot/master/minimal.json\n```\n as a demo...\n\n                — Have fun"))
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, getBotStartMsg(bot.Self.UserName)))
 	} else if msgTxt == "/close" || msgTxt == "/close@"+bot.Self.UserName {
 		if update.Message.ReplyToMessage == nil {
 			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please use this command while responding to the poll you want to close."))
@@ -270,6 +270,46 @@ func getTrelloCards(url string) *TrelloCardsList {
 	s := new(TrelloCardsList)
 	err = json.Unmarshal(body, &s)
 	return s
+}
+
+func getBotStartMsg(botName string) string{
+
+	botMsg := `Welcome to @`+botName+`!
+
+This message may not be up to date, please visit
+https://github.com/epfl-dojo/votbot for latest and
+more complete documentation.
+
+Please note that this bot is stateless; all vote data
+are stored inline into the vote message.
+
+The commands you may want to use are:
+  ◦ /help
+    Where you can have some tips and working demo.
+  ◦ /newvote URL
+    Where the URL point to a JSON file with specific elements.
+    Public Trello card list URL can be used.
+    Please check the README on github for all the jam recipe.
+  ◦ /close
+    When answering a poll message to close it;
+    Vote options will disappear and a summarized message with
+    vote's results will pop.
+
+[WIP] Poll options can be defined in main.go:
+  ◦ SINGLE_VOTE [true / false]
+    That mean that every voter can check only one answer.
+  ◦ SECRET_VOTE [true / false]
+    That mean that voters username are not displayed.
+  ◦ 💡 FOREVER_VOTE [true / false]
+    That mean that every voter can check only one answer, once.
+
+You can use this command: "/newvote https://raw.githubusercontent.com/epfl-dojo/votbot/master/minimal.json" as a demo...
+
+Feel free to contact us, ask stuff or open issues
+on https://github.com/epfl-dojo/votbot.
+
+          — Have fun`
+  return botMsg
 }
 
 func main() {
