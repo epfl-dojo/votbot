@@ -1,6 +1,6 @@
 # VotBot
 <p align="center">
-  <img src="./logo.png" alt="VotBot Logo" />
+  <img src="./doc/logo.png" alt="VotBot Logo" />
 </p>
 
 VotBot is a Telegram bot to organize votes. It is special in two points:
@@ -50,11 +50,11 @@ An example stands here: https://raw.githubusercontent.com/epfl-dojo/votbot/maste
 
 
 ## Screenshot
-![Screenshot](./screenshot.png)
+![Screenshot](./doc/screenshot.png)
 
 
 ## Operation Chart
-![Operation Chart](./operation_votbot.png)
+![Operation Chart](./doc/operation_votbot.png)
 
 
 ## How to use the bot with Trello
