@@ -18,8 +18,13 @@ import (
 	"strings"
 )
 
+const (
+	SINGLE_VOTE = "single"
+	MULTIPLE_VOTE_HONEST = "multiple"
+	MULTIPLE_VOTE_WAR = "war"
+)
+	
 var (
-	SINGLE_VOTE = true
 	SECRET_VOTE = true
 )
 
@@ -38,6 +43,7 @@ type TrelloCardsList struct {
 type Election struct {
 	Name       string     `yaml:name`
 	ID         string     `yaml:id`
+	mode       string     `yaml:mode`
 	PollsterID int        `yaml:pollster`
 	Votes      []Proposal `yaml:proposal`
 	// The string is a secret function of the username, so as to protect voter identity
@@ -72,6 +78,7 @@ func ElectionFromMessage(pollMessage tgbotapi.Message) Election {
 
 func createYAMLFormData(cardList *TrelloCardsList, pollsterID int) string {
 	election := new(Election)
+	election.mode = MULTIPLE_VOTE_HONEST
 	election.Name = cardList.Name
 	election.PollsterID = pollsterID
 	for _, card := range cardList.Cards {
@@ -182,14 +189,17 @@ func createPollSummary(message tgbotapi.Message, pollster tgbotapi.User) tgbotap
 		bufferSummary.WriteString(fmt.Sprintf("Poll started by %v\n", pollster.UserName))
 	}
 	sort.Sort(sort.Reverse(election))
-	for order, vote := range election.Votes {
+	for _, vote := range election.Votes {
 		var voteNoun string
+		if vote.Vote == 0 {
+			break
+		}
 		if vote.Vote <= 1 {
 			voteNoun = "vote"
 		} else {
 			voteNoun = "votes"
 		}
-		bufferSummary.WriteString(fmt.Sprintf("  %d) %2d %s for «%s»\n", order, vote.Vote, voteNoun, vote.Description))
+		bufferSummary.WriteString(fmt.Sprintf(" ❧ %2d %s for «%s»\n", vote.Vote, voteNoun, vote.Description))
 	}
 	// TODO: Option XXX wins (and handle ex-aequo results)
 	// -> bufferSummary.WriteString(fmt.Sprintf("— Option \"%s\" wins —\n", election.Name))
@@ -208,12 +218,21 @@ func createUpdateResponse(update tgbotapi.Update) tgbotapi.EditMessageTextConfig
 
 	election := ElectionFromMessage(*update.CallbackQuery.Message)
 
-	election.Votes[voteID].Vote += 1
-	if SINGLE_VOTE {
-		previousVoteChoice, voteChoiceExists := election.Voters[voterID(update.CallbackQuery.From, update.Message)]
+	currentBallot := election.Votes[voteID]
+	currentBallot.Vote += 1
+	previousVoteChoice, voteChoiceExists := election.Voters[voterID(update.CallbackQuery.From, update.Message)]
+	if election.mode == SINGLE_VOTE {
 		if voteChoiceExists {
 			election.Votes[previousVoteChoice].Vote -= 1
 		}
+	} else if election.mode == MULTIPLE_VOTE_HONEST {
+		// one can vote once for each option
+		// TODO
+	} else if election.mode == MULTIPLE_VOTE_WAR {
+		// war mode
+		
+	} else {
+		// mode not defined
 	}
 	election.Voters[voterID(update.CallbackQuery.From, update.Message)] = voteID
 	proposals := []string{}
