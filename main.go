@@ -58,7 +58,7 @@ func (election Election) Less(i, j int) bool {
 }
 
 func (election Election) Swap(i, j int) {
-	election.Votes[i].Vote, election.Votes[j].Vote = election.Votes[j].Vote, election.Votes[i].Vote
+	election.Votes[i], election.Votes[j] = election.Votes[j], election.Votes[i]
 }
 
 func ElectionFromMessage(pollMessage tgbotapi.Message) Election {
@@ -272,9 +272,9 @@ func getTrelloCards(url string) *TrelloCardsList {
 	return s
 }
 
-func getBotStartMsg(botName string) string{
+func getBotStartMsg(botName string) string {
 
-	botMsg := `Welcome to @`+botName+`!
+	botMsg := `Welcome to @` + botName + `!
 
 This message may not be up to date, please visit
 https://github.com/epfl-dojo/votbot for latest and
@@ -309,7 +309,7 @@ Feel free to contact us, ask stuff or open issues
 on https://github.com/epfl-dojo/votbot.
 
           — Have fun`
-  return botMsg
+	return botMsg
 }
 
 func main() {
